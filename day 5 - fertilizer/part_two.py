@@ -31,14 +31,19 @@ humidity_to_loc_map = [[int(j) for j in i.split()] for i in sections[7].splitlin
 humidity_loc_ranges = sorted([RangeMap(s_min=map[1], s_max=map[1]+map[2]-1, d_min=map[0], d_max=map[0]+map[2]-1) for map in humidity_to_loc_map], key=lambda x: x.s_min)
 
 def find_destination_ranges_for_source_range(source: Range, map: list[RangeMap]) -> list[Range]:
-    destination_ranges: list[Range] = []
-    mapped_source_ranges: list[Range] = []
+    """Takes in the source (min/max) and returns a list of one or more destination ranges."""
+    destination_ranges: list[Range] = [] 
+    mapped_source_ranges: list[Range] = [] # List of SOURCE Ranges that were found within a mapped Source -> Destination
     for destination_range in map:
         if source.min > destination_range.s_max:
-            # no overlap yet
+            # No overlap yet
+            # DEST     |---------|
+            # SOURCE                |---------|
             continue
         elif source.min >= destination_range.s_min and source.max <= destination_range.s_max:
-            # destination encompasses source
+            # Destination encompasses source. Can break here because no other overlap will exist.
+            # DEST     |-----------------|
+            # SOURCE       |---------|
             start_offset = source.min - destination_range.s_min
             end_offset = destination_range.s_max - source.max
             mapped_range = Range(min=destination_range.d_min + start_offset, max=destination_range.d_max - end_offset)
@@ -46,30 +51,40 @@ def find_destination_ranges_for_source_range(source: Range, map: list[RangeMap])
             mapped_source_ranges.append(source) # Full source is accounted for
             break
         elif source.min > destination_range.s_min and source.min <= destination_range.s_max and source.max > destination_range.s_max:
-            # source overlaps destination end
+            # Source overlaps destination end
+            # DEST     |------------|
+            # SOURCE           |---------|
             overlap_amount = destination_range.s_max - source.min
             mapped_range = Range(min=destination_range.d_max - overlap_amount, max=destination_range.d_max)
             mapped_source_range = Range(min=source.min, max=destination_range.s_max)
             destination_ranges.append(mapped_range)
             mapped_source_ranges.append(mapped_source_range)
         elif source.min <= destination_range.s_min and source.max >= destination_range.s_max:
-            # source encompasses destination
+            # Source encompasses destination
+            # DEST     |------------|
+            # SOURCE  |--------------|
             mapped_range = Range(min=destination_range.d_min, max=destination_range.d_max)
             mapped_source_range = Range(min=destination_range.s_min, max=destination_range.s_max)
             destination_ranges.append(mapped_range)
             mapped_source_ranges.append(mapped_source_range)
         elif source.min < destination_range.s_min and source.max >= destination_range.s_min and source.max < destination_range.s_max:
-            # source overlaps destination start
+            # Source overlaps destination start
+            # DEST         |------------|
+            # SOURCE  |----------|
             overlap_amount = source.max - destination_range.s_min
             mapped_range = Range(min=destination_range.d_min, max=destination_range.d_min + overlap_amount)
             mapped_source_range = Range(min=destination_range.s_min, max=source.max)
             destination_ranges.append(mapped_range)
             mapped_source_ranges.append(mapped_source_range)
         elif source.max < destination_range.s_min:
-            # no more overlap to check (because the destination_ranges are in order by s_min). just take source
+            # No more overlap to check (because the destination_ranges are in order by s_min). just take source
+            # DEST                  |----------|
+            # SOURCE  |----------|
             break
     mapped_source_ranges.sort(key= lambda x: x.min)
 
+    # This little bit of magic is how we still handle source ranges that were not mapped.
+    # Have to add to our outputted list of destination_ranges the exact ranges of the source that weren't mapped. (due to overlap)
     source_copy = Range(source.min, source.max)
     for range in mapped_source_ranges:
         if source_copy.min < range.min:
@@ -81,12 +96,15 @@ def find_destination_ranges_for_source_range(source: Range, map: list[RangeMap])
             destination_ranges.append(Range(range.max + 1, source_copy.max))
 
     if len(destination_ranges) == 0:
+        # If there was no mapping found, just return the source. (since unmapped_source == destination)
         destination_ranges.append(source)
 
     return destination_ranges
         
         
 possible_location_ranges: list[Range] = []
+# For each mapping, grab the range(s) of destinations that map to the source.
+# Have to deal with ranges (min/max) so that we don't have to brute force interate over sources one at a time.
 for i in range(len(seeds)):
     if i % 2 == 1: continue
     seed_range = Range(min=seeds[i], max=seeds[i] + seeds[i+1] - 1)
@@ -112,4 +130,5 @@ for i in range(len(seeds)):
     possible_location_ranges.extend(location_ranges)
 possible_location_ranges.sort(key=lambda x: x.min)
 end = timer()
-print(f"Location found! Answer is: {possible_location_ranges[0].min} | Total Duration:{round((end-start)*1000, 4)} ms")
+answer = possible_location_ranges[0].min
+print(f"Location found! Total Execution Duration:{round((end-start)*1000, 4)} ms")
