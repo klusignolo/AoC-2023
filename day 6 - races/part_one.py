@@ -1,5 +1,3 @@
-# Each millisecond adds one millimeter/millisecond
-# get number of ways to win
 with open("races.txt", "r") as file:
     time_and_distance = file.read().splitlines()
     race_times = [int(i) for i in time_and_distance[0].split()[1:]]
