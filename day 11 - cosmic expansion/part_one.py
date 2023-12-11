@@ -27,8 +27,13 @@ def expand(input: list[list[str]], direction: str):
                 for row in input:
                     row.insert(indices_to_expand[i] + expanded_so_far, ".")
                 expanded_so_far += 1
+
+def calculate_distances(universe: list[list[str]]):
+    stars = {}
+
 expand(universe, "ns")
 expand(universe, "ew")
 for row in universe:
     print(row)
-print(universe)
+answer = calculate_distances()
+print(answer)
