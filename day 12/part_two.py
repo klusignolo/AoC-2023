@@ -1,6 +1,5 @@
 with open("records.txt", "r") as file:
     records = file.read().splitlines()
-
 def does_record_pass(record: str, hash_counts: list[int]) -> bool:
     b_list = hash_counts.copy()
     curr_broke = b_list.pop(0)
@@ -60,16 +59,53 @@ for line in records:
     r_num += 1
     print(f"Calculating line {r_num}")
     valid_combos_found = get_possibilities_for_line(line)
-    print(f"Calculating extended line {r_num}")
-    if line.split()[0].endswith("#"):
-        extended_combos = valid_combos_found
-    elif line.split()[0].endswith("?"):
-        new_line = f"{line.split()[0]}? {line.split()[1]}"
-        extended_combos = get_possibilities_for_line(new_line)
+    record = line.split()[0]
+    b_list = [int(b) for b in line.split()[1].split(",")]
+    if record.endswith("#") or record.startswith("#"):
+        new_line = line
+    # elif (record.startswith("?") and "#" not in record[0:b_list[0]]) and (record.endswith("?") and "#" not in record[-b_list[len(b_list)-1]:]):
+    #     new_line = f"?{line.split()[0]}? {line.split()[1]}"
+    # elif record.startswith("?") and "#" not in record[0:b_list[0]-1]:
+    #     new_line = "?" + line
+    # elif record.endswith("?") and "#" not in record[-b_list[len(b_list)-1]+1:]:
+    #     new_line = f"{line.split()[0]}? {line.split()[1]}"
     else:
-        extended_combos = get_possibilities_for_line("?" + line)
+        # decide which end to put the ? by seeing which has more ??s
+        l_count = 0
+        r_count = 0
+        l_done = False
+        r_done = False
+        for i in range(len(record)):
+            l = record[i]
+            r = record[len(record)-i-1]
+            if not l_done:
+                l_done = l != "?"
+                if not l_done:
+                    l_count += 1
+            if not r_done:
+                r_done = r != "?"
+                if not r_done:
+                    r_count += 1
+            if l_done and r_done:
+                break
+        l_div = float(l_count) / float(b_list[0])
+        r_div = float(r_count) / float(b_list[len(b_list)-1])
+        choose_right = r_div > l_div
+        if choose_right:
+            new_line = f"{line.split()[0]}? {line.split()[1]}"
+        else:
+            new_line = "?" + line
+    extended_combos = get_possibilities_for_line(new_line)
     for _ in range(4):
         valid_combos_found *= extended_combos
-    print(f"Line {r_num} yielded {valid_combos_found} combos!")
+    #print(f"Line {r_num} yielded {valid_combos_found} combos!")
     possibilities += valid_combos_found
+# 1337884717487 LOW
+# 1364880608120 LOW
+# 1365051289408 LOW
+# 1390263395754 LOW
+# 1288092254858 LOW?
+# 1284720290750 LOW?
+# 1287562879561 
+# 7102876624527 WRONG?
 print(possibilities)
