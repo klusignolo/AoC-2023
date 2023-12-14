@@ -1,3 +1,4 @@
+from sympy.utilities.iterables import multiset_permutations
 with open("records.txt", "r") as file:
     records = file.read().splitlines()
 def does_record_pass(record: str, hash_counts: list[int]) -> bool:
@@ -23,13 +24,65 @@ def does_record_pass(record: str, hash_counts: list[int]) -> bool:
         curr_broke = None
     return len(b_list) == 0 and hash_cnt == 0
 
-def get_possibilities_for_line(line: str):
+def get_possibilities_for_line_2(line: str):
     record = line.split()[0]
     b_list = [int(i) for i in line.split()[1].split(",")]
-    p_count = len(record) - sum(b_list) - len([i for i in record if i == "."])
+    total_b_needed = sum(b_list)
+    b_count = len([i for i in record if i == "#"])
     q_count = len([char for char in record if char == "?"])
-    max_possibilities = int("1" * q_count, 2)
-    valid_combos = []
+    b_to_q = total_b_needed - b_count
+    p_to_q = q_count - b_to_q
+    perm_zero = ("1" * p_to_q) + ("0" * b_to_q)
+    if b_to_q == 0:
+        perms = [perm_zero]
+    else:
+        perms = list(multiset_permutations([char for char in perm_zero]))
+    possibilities = 0
+    c_num = 0
+    for perm in perms:
+        valid_combo = int("".join(perm), 2)
+        record_to_try = record
+        while valid_combo > 0:
+            char = "." if valid_combo & 1 else "#"
+            record_to_try = record_to_try.replace("?", char, 1)
+            valid_combo = valid_combo >> 1
+        record_to_try = record_to_try.replace("?", "#")
+        if does_record_pass(record_to_try, b_list):
+            possibilities += 1
+        c_num += 1
+        print(f"\rBrute forcing {len(perms)} combinations. {c_num}/{len(perms)}", end="")
+    return possibilities
+
+# def get_possibilities_for_line(line: str):
+#     record = line.split()[0]
+#     b_list = [int(i) for i in line.split()[1].split(",")]
+#     total_b_needed = sum(b_list)
+#     b_count = len([i for i in record if i == "#"])
+#     q_count = len([char for char in record if char == "?"])
+#     b_to_q = total_b_needed - b_count
+#     p_to_q = q_count - b_to_q
+#     perm_zero = ("1" * p_to_q) + ("0" * b_to_q)
+#     if b_to_q == 0:
+#         perms = [perm_zero]
+#     else:
+#         perms = list(multiset_permutations([char for char in perm_zero]))
+#     possibilities = 0
+#     c_num = 0
+#     for perm in perms:
+#         valid_combo = int("".join(perm), 2)
+#         record_to_try = record
+#         while valid_combo > 0:
+#             char = "." if valid_combo & 1 else "#"
+#             record_to_try = record_to_try.replace("?", char, 1)
+#             valid_combo = valid_combo >> 1
+#         record_to_try = record_to_try.replace("?", "#")
+#         if does_record_pass(record_to_try, b_list):
+#             possibilities += 1
+#         c_num += 1
+#         print(f"\rBrute forcing {len(perms)} combinations. {c_num}/{len(perms)}", end="")
+#     return possibilities
+
+def get_permutations(max_possibilities: int, p_count: int):
     for i in range(max_possibilities):
         i_copy = i
         p_needed = p_count
@@ -39,11 +92,17 @@ def get_possibilities_for_line(line: str):
             i_copy = i_copy >> 1
         is_valid = i_copy == 0 and p_needed == 0
         if is_valid:
-            valid_combos.append(i)
+            yield i
+
+def get_possibilities_for_line_1(line: str):
+    record = line.split()[0]
+    b_list = [int(i) for i in line.split()[1].split(",")]
+    p_count = len(record) - sum(b_list) - len([i for i in record if i == "."])
+    q_count = len([char for char in record if char == "?"])
+    max_possibilities = int("1" * q_count, 2)
     possibilities = 0
-    if len(valid_combos) == 0:
-        possibilities += 1
-    for valid_combo in valid_combos:
+    c_num = 0
+    for valid_combo in get_permutations(max_possibilities, p_count):
         record_to_try = record
         while valid_combo > 0:
             char = "." if valid_combo & 1 else "#"
@@ -52,60 +111,53 @@ def get_possibilities_for_line(line: str):
         record_to_try = record_to_try.replace("?", "#")
         if does_record_pass(record_to_try, b_list):
             possibilities += 1
-    return possibilities
+        c_num += 1
+        print(f"\rBrute forcing combinations. {c_num} tried", end="")
+    return max(1, possibilities)
+
+def read_results():
+    with open("results2.txt", "r") as file:
+        return {int(result.split()[0]): int(result.split()[1]) for result in file.read().splitlines() if result != ''}
+
+def save_results(results: dict[int,int]):
+    with open("results2.txt", "w") as result_file:
+        for k, v in results.items():
+            result_file.write(f"{k} {v}\n")
+
 possibilities = 0
 r_num = 0
 for line in records:
+    stored_results = read_results()
+    max_result = max(stored_results.keys())
     r_num += 1
-    print(f"Calculating line {r_num}")
-    valid_combos_found = get_possibilities_for_line(line)
-    record = line.split()[0]
-    b_list = [int(b) for b in line.split()[1].split(",")]
-    if record.endswith("#") or record.startswith("#"):
-        new_line = line
-    # elif (record.startswith("?") and "#" not in record[0:b_list[0]]) and (record.endswith("?") and "#" not in record[-b_list[len(b_list)-1]:]):
-    #     new_line = f"?{line.split()[0]}? {line.split()[1]}"
-    # elif record.startswith("?") and "#" not in record[0:b_list[0]-1]:
-    #     new_line = "?" + line
-    # elif record.endswith("?") and "#" not in record[-b_list[len(b_list)-1]+1:]:
-    #     new_line = f"{line.split()[0]}? {line.split()[1]}"
+    if r_num < max_result:        
+        print(f"Stored line {r_num} value was {stored_results[r_num]}")
+        possibilities += stored_results[r_num]
+        continue
+    elif r_num == max_result:
+        print(f"Currently crunching line {r_num} elsewhere.")
+        continue
     else:
-        # decide which end to put the ? by seeing which has more ??s
-        l_count = 0
-        r_count = 0
-        l_done = False
-        r_done = False
-        for i in range(len(record)):
-            l = record[i]
-            r = record[len(record)-i-1]
-            if not l_done:
-                l_done = l != "?"
-                if not l_done:
-                    l_count += 1
-            if not r_done:
-                r_done = r != "?"
-                if not r_done:
-                    r_count += 1
-            if l_done and r_done:
-                break
-        l_div = float(l_count) / float(b_list[0])
-        r_div = float(r_count) / float(b_list[len(b_list)-1])
-        choose_right = r_div > l_div
-        if choose_right:
-            new_line = f"{line.split()[0]}? {line.split()[1]}"
-        else:
-            new_line = "?" + line
-    extended_combos = get_possibilities_for_line(new_line)
-    for _ in range(4):
-        valid_combos_found *= extended_combos
-    #print(f"Line {r_num} yielded {valid_combos_found} combos!")
-    possibilities += valid_combos_found
-# 1337884717487 LOW
-# 1364880608120 LOW
-# 1365051289408 LOW
+        stored_results[r_num] = -1
+        save_results(stored_results)
+
+    print(f"Calculating line {r_num}")
+    base_combos = get_possibilities_for_line_1(line)
+
+    record = line.split()[0]
+    blist = line.split()[1]
+    extended_line = f"{record}?{record} {blist},{blist}"
+    print(f"\nCalculating extended line {r_num}")
+    if record.startswith("#") or record.endswith("#"):
+        total_combos = base_combos ** 5
+    else:
+        extended_combos = get_possibilities_for_line_1(extended_line)
+        total_combos = base_combos * (int(extended_combos / base_combos) ** 4)
+    stored_results = read_results()
+    stored_results[r_num] = total_combos
+    save_results(stored_results)
+    print(f"\nLine {r_num} had {total_combos} valid combinations")
+    possibilities += total_combos
 # 1390263395754 LOW
-# 1288092254858 LOW?
-# 1284720290750 LOW?
-# 1287562879561 
-# 7102876624527 WRONG?
 print(possibilities)
+fart = input("We did it!")
