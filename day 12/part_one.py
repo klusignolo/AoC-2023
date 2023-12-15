@@ -1,4 +1,4 @@
-with open("test.txt", "r") as file:
+with open("records.txt", "r") as file:
     records = file.read().splitlines()
 
 def does_record_pass(record: str, hash_counts: list[int]) -> bool:
