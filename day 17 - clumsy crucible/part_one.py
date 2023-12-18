@@ -1,11 +1,11 @@
 import math
 
-with open("test.txt", "r") as file:
+with open("input.txt", "r") as file:
     city_blocks = [[int(block) for block in row] for row in file.read().splitlines()]
-
+# 658 best so far. TOO HIGH
 WIDTH = len(city_blocks) - 1
 DESTINATION = (WIDTH, WIDTH)
-MAX_HEAT_LOSS = 9
+MAX_HEAT_LOSS =1
 
 class Node:
     connected_to: "Node" = None
@@ -19,6 +19,9 @@ class Node:
         self.Y = point[1]
         self.H = None
         self.G = None
+
+    def __repr__(self) -> str:
+        return self.key
     
     def F(self) -> int:
         return self.G + self.H + self.heat_loss
@@ -57,10 +60,10 @@ class Node:
         distance_y = destination.point[1] - self.point[1]
         furthest = max(distance_x, distance_y)
         nearest = min(distance_x, distance_y)
-        jumps_needed = math.ceil((furthest - nearest) / 6)
-        return ((distance_x + distance_y + jumps_needed) * MAX_HEAT_LOSS) + destination.heat_loss
+        jumps_needed = math.floor((furthest - nearest) / 3) * 2
+        return distance_x + distance_y + jumps_needed
     
-city_nodes: list[Node] = city_blocks.copy()
+city_nodes: list[list[Node]] = city_blocks.copy()
 for y, row in enumerate(city_blocks):
     for x, col in enumerate(row):
         city_nodes[y][x] = Node(point=(x, y), heat_loss=col)
@@ -74,12 +77,14 @@ for row in city_nodes:
 to_search: list[Node] = [start_node]
 processed: list[str] = []
 while len(to_search) > 0:
-    current = to_search[0]
-    for node in to_search:
+    current_i = 0
+    current = to_search[current_i]
+    for i, node in enumerate(to_search):
         if node.F() < current.F() or (node.F() == current.F() and node.H < current.H):
             current = node
-    processed.append(node.key)
-    to_search.pop(0)
+            current_i = i
+    processed.append(current.key)
+    to_search.pop(current_i)
 
     if current == target_node:
         current_path_tile = target_node
@@ -90,20 +95,18 @@ while len(to_search) > 0:
             shortest_path.append(current_path_tile)
             total_heat_loss += current_path_tile.heat_loss
             current_path_tile = current_path_tile.connected_to
-        for node in shortest_path:
-            print(node.key)
+        print(start_node.key)
         print(total_heat_loss)
-        print("FUCK MY ASS IT WORKED")
+        print("Path found. Probably not the smallest tho...")
 
     for neighbor in current.neighbors(city=city_nodes):
         if neighbor.key in processed: continue
         is_in_search = neighbor in to_search
-        cost_to_neighbor = current.G + current.distance_to(neighbor)
+        cost_to_neighbor = current.G + neighbor.heat_loss
         if not is_in_search or cost_to_neighbor < neighbor.G:
             neighbor.G = cost_to_neighbor
             neighbor.connect_to(current)
 
             if not is_in_search:
-                neighbor.H = neighbor.distance_to(target_node)
                 to_search.append(neighbor)
 
