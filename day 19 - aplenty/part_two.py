@@ -72,39 +72,11 @@ class Workflow:
             if instruction.test_part(part):
                 return instruction.destination
             
-with open("test.txt", "r") as file:
+with open("input.txt", "r") as file:
     parsed = file.read().split("\n\n")
     parts = [Part(line) for line in parsed[1].splitlines()]
     workflows ={w.name: w for w in [Workflow(line) for line in parsed[0].splitlines()]}
 
-
-# Look through all instructions from right to left
-# If instruction destination == "A", return Condition.
-# If condition is None, condition becomes OPPOSITE of next instruction condition
-# At end of instructions, take NAME of workflow and look for workflows that end in that result.
-# valid_routes = []
-# for name, workflow in workflows.items():
-#     for instruction in workflow.instructions:
-#         if instruction.destination == "A":
-#             valid_routes.append(name)
-#             break
-
-# for w_name in valid_routes:
-#     workflow = workflows[w_name]
-#     conditions = []
-#     found_a = False
-#     for i in workflow.instructions:
-#         if i.destination == "A":
-#             found_a = True
-#             conditions.append(i.condition)
-#         elif not found_a: 
-#             continue
-#         else:
-#             conditions.append(i.o_condition())
-#     valid_routes = f
-    
-# start at IN. look through all possible instruction destinations, gathering conditions that must lead to each destination.
-# form new "path" for each fork in the road. A path gets removed IF only destination is R.
 p_index = 0
 paths: dict[int,list[str]] = {}
 final_paths = []
@@ -120,6 +92,7 @@ def trace_paths(workflow: Workflow, incoming_path: list[str]):
                 final_path.extend(partial_path)
             final_path.append(i.condition)
             final_paths.append(final_path)
+            partial_path.append(i.o_condition())
         elif i.destination == "A":
             final_path = deepcopy(incoming_path)
             if len(partial_path) > 0:
@@ -155,13 +128,13 @@ while len(paths_to_search) > 0:
 total_options = 0
 for valid_path in final_paths:
     max_x = 4000
-    min_x = 0
+    min_x = 1
     max_m = 4000
-    min_m = 0
+    min_m = 1
     max_a = 4000
-    min_a = 0
+    min_a = 1
     max_s = 4000
-    min_s = 0
+    min_s = 1
     for condition in valid_path:
         test_param = re.findall(r"(\w+)[<=>]", condition)[0]
         conditional = re.findall(r"\w+(\W+)\d+", condition)[0]
@@ -203,12 +176,10 @@ for valid_path in final_paths:
                     max_s = target_val - 1
                 else:
                     max_s = target_val
-    x_range = max_x - min_x
-    m_range = max_m - min_m
-    a_range = max_a - min_a
-    s_range = max_s - min_s
+    x_range = max_x - min_x + 1
+    m_range = max_m - min_m + 1
+    a_range = max_a - min_a + 1
+    s_range = max_s - min_s + 1
     total_options += x_range * m_range * a_range * s_range
 
-#267640439920000
-#167409079868000 Test answer
 print("Done")
