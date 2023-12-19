@@ -1,6 +1,6 @@
 import math
 
-with open("input.txt", "r") as file:
+with open("test.txt", "r") as file:
     city_blocks = [[int(block) for block in row] for row in file.read().splitlines()]
 # 658 best so far. TOO HIGH
 WIDTH = len(city_blocks) - 1
