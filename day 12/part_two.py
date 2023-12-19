@@ -112,7 +112,8 @@ def get_possibilities_for_line_1(line: str):
         if does_record_pass(record_to_try, b_list):
             possibilities += 1
         c_num += 1
-        print(f"\rBrute forcing combinations. {c_num} tried", end="")
+        if c_num % 10000 == 0:
+            print(f"\rBrute forcing combinations. {c_num} tried", end="")
     return max(1, possibilities)
 
 def read_results():
@@ -120,6 +121,7 @@ def read_results():
         return {int(result.split()[0]): int(result.split()[1]) for result in file.read().splitlines() if result != ''}
 
 def save_results(results: dict[int,int]):
+    results = dict(sorted(results.items()))
     with open("results2.txt", "w") as result_file:
         for k, v in results.items():
             result_file.write(f"{k} {v}\n")
@@ -130,18 +132,19 @@ for line in records:
     stored_results = read_results()
     max_result = max(stored_results.keys())
     r_num += 1
-    if r_num < max_result:        
-        print(f"Stored line {r_num} value was {stored_results[r_num]}")
+    if r_num < max_result and r_num in stored_results.keys():
+        print(f"\rStored line {r_num} value was {stored_results[r_num]}", end="")
         possibilities += stored_results[r_num]
         continue
     elif r_num == max_result:
-        print(f"Currently crunching line {r_num} elsewhere.")
+        print(f"\rCurrently crunching line {r_num} elsewhere.", end="")
         continue
     else:
-        stored_results[r_num] = -1
-        save_results(stored_results)
+        if r_num not in stored_results.keys():
+            stored_results[r_num] = -1
+            save_results(stored_results)
 
-    print(f"Calculating line {r_num}")
+    print(f"\nCalculating line {r_num}")
     base_combos = get_possibilities_for_line_1(line)
 
     record = line.split()[0]
