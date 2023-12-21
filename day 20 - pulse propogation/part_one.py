@@ -67,7 +67,7 @@ class Module:
         return self.pending_outputs
         
     
-    def transmit_output(self):
+    def send_pulses(self):
         if self.type == "c":
             self.state = False
             for v in self.inputs:
@@ -102,7 +102,7 @@ def press_button():
     next_modules = ["broadcaster"]
     while len(next_modules) > 0:
         module_to_process = next_modules.pop(0)
-        transmitted_outputs = MODULES[module_to_process].transmit_output()
+        transmitted_outputs = MODULES[module_to_process].send_pulses()
         for m in transmitted_outputs:
             MODULES[m].process_input()
             next_modules.extend(MODULES[m].pending_outputs)
