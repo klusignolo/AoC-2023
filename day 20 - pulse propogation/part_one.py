@@ -16,9 +16,9 @@ class Module:
 
     def __init__(self, unparsed_str: str):
         parse1 = unparsed_str.split(" -> ")
-        self.inputs = []
-        self.pending_inputs = []
-        self.pending_outputs = []
+        self.inputs = {}
+        self.next_pulse_to_send = []
+        self.has_pending_outputs = True
         if parse1[0].startswith("&"):
             self.type = "c"
             self.name = parse1[0][1:]
@@ -33,83 +33,70 @@ class Module:
         self.prev_state = False
         self.outputs = parse1[1].split(", ")
     
-    def receive_pending_input(self, source: str, input: bool):
-        print(f"adding input {source, input} to {self.name}")
-        self.pending_inputs.append((source, input))
+
     
     """Processes the input pulse, returning a list of modules that should process next"""
-    def process_input(self):
+    def receive_pulse(self, source, pulse):
         self.prev_state = self.state
-        pi = self.pending_inputs.pop(0)
-        source = pi[0]
-        input = pi[1]
-        print(f"removing input {source, input} from {self.name}")
-        global HIGH_COUNT
-        global LOW_COUNT
-        if input:
-            HIGH_COUNT += 1
-        else:
-            LOW_COUNT += 1
-        state_str = "HIGH" if input else "LOW"
-        print(f"{source} -{state_str}-> {self.name}")
         if self.type == "f":
-            self.state = self.state if input else not self.state
+            self.state = self.state if pulse else not self.state
         elif self.type == "c":
+            self.inputs[source] = pulse
             self.state = False
-            for v in self.inputs:
-                if not MODULES[v].state:
+            for v in self.inputs.values():
+                if not v:
                     self.state = True
                     break
-        if self.type == "f" and input:
-            self.pending_outputs = [] # Flip flop that did not change state transmits no outputs
+        if self.type == "f" and pulse:
+            self.has_pending_outputs = False # Flip flop that did not change state transmits no outputs
         else:
-            self.pending_outputs = self.outputs
-        return self.pending_outputs
+            self.next_pulse_to_send.append(self.state)
+            self.has_pending_outputs = True
         
     
     def send_pulses(self):
-        if self.type == "c":
-            self.state = False
-            for v in self.inputs:
-                if not MODULES[v].state:
-                    self.state = True
-                    break
+        next_pulse = self.next_pulse_to_send.pop(0)
+        global HIGH_COUNT
+        global LOW_COUNT
         for output in self.outputs:
+            if next_pulse:
+                HIGH_COUNT += 1
+            else:
+                LOW_COUNT += 1
             try:
-                MODULES[output].receive_pending_input(self.name, self.state)
+                MODULES[output].receive_pulse(self.name, next_pulse)
             except KeyError:
                 continue
         return self.outputs
 
-with open("test.txt", "r") as file:
+with open("modules.txt", "r") as file:
     parsed_modules = [Module(line) for line in file.read().splitlines()]
     MODULES = {m.name: m for m in parsed_modules}
-MODULES["output"] = Module("output -> ")
-MODULES["output"].outputs = []
+
 # Configure inputs of conjunctions
-for m in MODULES.values():
-    for output in m.outputs:
+for source in MODULES.values():
+    for destination in source.outputs:
         try:
-            if MODULES[output].type == "c" and m.name not in MODULES[output].inputs:
-                MODULES[output].inputs.append(m.name)
+            if MODULES[destination].type == "c" and source.name not in MODULES[destination].inputs:
+                MODULES[destination].inputs[source.name] = False
         except KeyError:
             continue
 
 def press_button():
-    MODULES["broadcaster"].receive_pending_input("button", False) # Button push
-    MODULES["broadcaster"].process_input()
+    global LOW_COUNT
+    LOW_COUNT += 1
+    MODULES["broadcaster"].receive_pulse("button", False) # Button push
+    next_senders = ["broadcaster"]
+    while len(next_senders) > 0:
+        next_sender = next_senders.pop(0)
+        MODULES[next_sender].send_pulses()
+        for m in MODULES[next_sender].outputs:
+            try:
+                if MODULES[m].has_pending_outputs:
+                    next_senders.append(m)
+            except KeyError:
+                continue
 
-    next_modules = ["broadcaster"]
-    while len(next_modules) > 0:
-        module_to_process = next_modules.pop(0)
-        transmitted_outputs = MODULES[module_to_process].send_pulses()
-        for m in transmitted_outputs:
-            MODULES[m].process_input()
-            next_modules.extend(MODULES[m].pending_outputs)
-
-
-for i in range(1):
+for i in range(1000):
     press_button()
-# 2718854840 too high
-# 2718892737
 print(f"High: {HIGH_COUNT}, Low: {LOW_COUNT}. Product: {HIGH_COUNT * LOW_COUNT}")

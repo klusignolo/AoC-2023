@@ -1,7 +1,12 @@
+from copy import deepcopy
 import math
+import statistics
 
-with open("input.txt", "r") as file:
+with open("test.txt", "r") as file:
     city_blocks = [[int(block) for block in row] for row in file.read().splitlines()]
+
+
+
 # 658 best so far. TOO HIGH
 WIDTH = len(city_blocks) - 1
 DESTINATION = (WIDTH, WIDTH)
@@ -68,9 +73,96 @@ for y, row in enumerate(city_blocks):
     for x, col in enumerate(row):
         city_nodes[y][x] = Node(point=(x, y), heat_loss=col)
 
-start_node: Node = city_nodes[0][0]
-target_node: Node = city_nodes[WIDTH][WIDTH]
-for row in city_nodes:
+# distribute heat loss in neighbor-weighted fashion
+weighted_city_nodes = deepcopy(city_nodes)
+
+def get_weighted_heat_loss(x, y):
+    node: Node = city_nodes[y][x]
+    left_1 = city_nodes[y][x-1].heat_loss if x > 0 else None
+    left_2 = city_nodes[y][x-2].heat_loss if x > 1 else left_1
+    right_1 = city_nodes[y][x+1].heat_loss if x < len(city_nodes[y]) - 1 else None
+    right_2 = city_nodes[y][x+2].heat_loss if x < len(city_nodes[y]) - 2 else right_1
+    up_1 = city_nodes[y-1][x].heat_loss if x > 0 else None
+    up_2 = city_nodes[y-2][x].heat_loss if x > 1 else up_1
+    down_1 = city_nodes[y+1][x].heat_loss if y < len(city_nodes) - 1 else None
+    down_2 = city_nodes[y+2][x].heat_loss if y < len(city_nodes) - 2 else down_1
+    left_score = left_1 + left_2 if left_1 else None
+    right_score = right_1 + right_2 if right_1 else None
+    up_score = up_1 + up_2 if up_1 else None
+    down_score = down_1 + down_2 if down_1 else None
+    scores_to_compare = []
+    if left_score:
+        scores_to_compare.append(left_score)
+    if right_score:
+        scores_to_compare.append(right_score)
+    if up_score:
+        scores_to_compare.append(up_score)
+    if down_score:
+        scores_to_compare.append(down_score)
+    scores_to_average = []
+    avg_count = 4
+    while len(scores_to_compare):
+        min_score = scores_to_compare[0]
+        min_i = 0
+        for i, score in enumerate(scores_to_compare):
+            if score < min_score:
+                min_score = score
+                min_i = i
+        for _ in range(avg_count):
+            scores_to_average.append(min_score)
+        avg_count -= 1
+        scores_to_compare.pop(min_i)
+    average = statistics.mean(scores_to_average)
+    new_heat_loss = node.heat_loss + average
+    weighted_city_nodes[y][x].heat_loss = new_heat_loss
+
+def get_weighted_heat_loss2(x, y):
+    node: Node = city_nodes[y][x]
+    left_1 = city_nodes[y][x-1].heat_loss if x > 0 else node.heat_loss
+    left_2 = city_nodes[y][x-2].heat_loss if x > 1 else left_1
+    right_1 = city_nodes[y][x+1].heat_loss if x < len(city_nodes[y]) - 1 else node.heat_loss
+    right_2 = city_nodes[y][x+2].heat_loss if x < len(city_nodes[y]) - 2 else right_1
+    up_1 = city_nodes[y-1][x].heat_loss if x > 0 else node.heat_loss
+    up_2 = city_nodes[y-2][x].heat_loss if x > 1 else up_1
+    down_1 = city_nodes[y+1][x].heat_loss if y < len(city_nodes) - 1 else node.heat_loss
+    down_2 = city_nodes[y+2][x].heat_loss if y < len(city_nodes) - 2 else down_1
+    left_score = left_1 + left_2
+    right_score = right_1 + right_2
+    up_score = up_1 + up_2
+    down_score = down_1 + down_2
+    scores_to_compare = []
+    scores_to_compare.append(left_score)
+    scores_to_compare.append(right_score)
+    scores_to_compare.append(up_score)
+    scores_to_compare.append(down_score)
+
+    scores_to_average = []
+    min_score = scores_to_compare[0]
+    min_i = 0
+    for i, score in enumerate(scores_to_compare):
+        if score < min_score:
+            min_score = score
+            min_i = i
+    for i in range(len(scores_to_compare)):
+        weight = 18 if i == min_i else 9 if scores_to_compare[i] < 5 else 2
+        amount_to_weigh = weight*2 if scores_to_compare[i] == right_score or scores_to_compare[i] == down_score else weight
+        for _ in range(amount_to_weigh):
+            scores_to_average.append(min_score)
+    for _ in range((9 - node.heat_loss)*2):
+        scores_to_average.append(node.heat_loss)
+    average = statistics.mean(scores_to_average)
+    weighted_city_nodes[y][x].heat_loss = int(average*100)
+
+for y, row in enumerate(city_nodes):
+    for x, col in enumerate(row):
+        get_weighted_heat_loss2(x, y)
+
+for y, row in enumerate(weighted_city_nodes):
+    print(",".join([str(node.heat_loss) for node in row]))
+
+start_node: Node = weighted_city_nodes[0][0]
+target_node: Node = weighted_city_nodes[WIDTH][WIDTH]
+for row in weighted_city_nodes:
     for node in row:
         node.G = start_node.distance_to(node)
         node.H = node.distance_to(target_node)
@@ -94,13 +186,14 @@ while len(to_search) > 0:
         while current_path_tile != start_node:
             print(current_path_tile.key)
             shortest_path.append(current_path_tile)
-            total_heat_loss += current_path_tile.heat_loss
+            total_heat_loss += city_nodes[current_path_tile.Y][current_path_tile.X].heat_loss
             current_path_tile = current_path_tile.connected_to
         print(start_node.key)
         print(total_heat_loss)
         print("Path found. Probably not the smallest tho...")
+        to_search = []
 
-    for neighbor in current.neighbors(city=city_nodes):
+    for neighbor in current.neighbors(city=weighted_city_nodes):
         if neighbor.key in processed: continue
         is_in_search = neighbor in to_search
         cost_to_neighbor = current.G + neighbor.heat_loss
@@ -110,4 +203,3 @@ while len(to_search) > 0:
 
             if not is_in_search:
                 to_search.append(neighbor)
-
