@@ -88,12 +88,22 @@ for x in range(len(stacks)):
                     bricks[this_brick].supports.add(that_brick)
                     bricks[that_brick].supported_by.add(this_brick)
 
-disappear = 0
+fall_count = 0
 for brick in bricks.values():
-    can_dissolve = True
-    for supported_brick in brick.supports:
-        if len(bricks[supported_brick].supported_by) == 1:
-            can_dissolve = False
-            break
-    disappear += 1 if can_dissolve else 0
-print(disappear)
+    bricks_to_check = list(brick.supports)
+    fallen_bricks = set([brick.name])
+    while len(bricks_to_check) > 0:
+        new_bricks_to_check = set()
+        for brick2 in bricks_to_check:
+            brick2check = bricks[brick2]
+            if len(brick2check.supported_by) <= 1:
+                fallen_bricks.add(brick2)
+                new_bricks_to_check.update(brick2check.supports)
+            elif len(brick2check.supported_by.intersection(fallen_bricks)) == len(brick2check.supported_by):
+                fallen_bricks.add(brick2)
+                new_bricks_to_check.update(brick2check.supports)
+            else:
+                continue
+        bricks_to_check = list(new_bricks_to_check)
+    fall_count += len(fallen_bricks) - 1 if len(fallen_bricks) > 1 else 0
+print(fall_count)
