@@ -14,11 +14,12 @@ Y = 0
 # make it wider if exceed width
 # make it taller if exceed abs(height)
 for instruction in dig_plan:
+    print(instruction)
     instructions = instruction.split()
-    direction = instructions[0]
-    moves = int(instructions[1])
-    color = re.findall(r"\(#\S+)\)", instructions[2])[0]
-    dig_instructions.append((direction, moves, color))
+    hex_instructions = re.findall(r"\(#(\S+)\)", instructions[2])[0]
+    moves = int(hex_instructions[:5], 16)
+    direction_int = int(hex_instructions[5])
+    direction = "R" if direction_int == 0 else "D" if direction_int == 1 else "L" if direction_int == 2 else "U"
     if direction == "R":
         growth_needed = max(0, moves + X - max_right)
         for grow_right in range(growth_needed):
@@ -29,8 +30,9 @@ for instruction in dig_plan:
             dig_site[Y][X] = "#"
     elif direction == "L":
         growth_needed = abs(min(0, X - moves - min_left))
-        for grow_left in range(growth_needed):
-            [dig_site[row].insert(0,".") for row in range(max_down - min_up + 1)]
+        new_growth = ["." for _ in range(growth_needed)]
+        for row in range(max_down - min_up + 1):
+            dig_site[row] = new_growth + dig_site[row]
         max_right += growth_needed
         X += growth_needed
         for i in range(moves):
@@ -38,8 +40,11 @@ for instruction in dig_plan:
             dig_site[Y][X] = "#"
     elif direction == "U":
         growth_needed = abs(min(0, Y - moves - min_up))
-        for grow_up in range(growth_needed):
-            dig_site.insert(0,["." for _ in range(max_right - min_left + 1)])
+        new_growth = ["." for _ in range(growth_needed)]
+        for row in range(max_right - min_left + 1):
+            dig_site[row] = new_growth + dig_site[row]
+        # for grow_up in range(growth_needed):
+        #     dig_site.insert(0,["." for _ in range(max_right - min_left + 1)])
         max_down += growth_needed
         Y += growth_needed
         for i in range(moves):
@@ -54,41 +59,6 @@ for instruction in dig_plan:
             Y += 1
             dig_site[Y][X] = "#"
 area = 0
-# def visit_neighbors(x: int, y: int):
-#     top = None if y == 0 else dig_site[y-1][x]
-#     right = None if x == len(dig_site[y]) - 1 else dig_site[y][x+1]
-#     bot = None if y == len(dig_site) - 1 else dig_site[y+1][x]
-#     left = None if x == 0 else dig_site[y][x-1]
-#     neighbors = ""
-#     if top: neighbors += top
-#     if right: neighbors += right
-#     if bot: neighbors += bot
-#     if left: neighbors += left
-#     if dig_site[y][x] == "." and "X" in neighbors:
-#         dig_site[y][x] = "X"
-#     this = dig_site[y][x]
-#     if this == "X":
-#         if top and top != "#":
-#             dig_site[y-1][x] = "X"
-#         if right and right != "#":
-#             dig_site[y][x+1] = "X"
-#         if bot and bot != "#":
-#             dig_site[y+1][x] = "X"
-#         if left and left != "#":
-#             dig_site[y][x-1] = "X"
-# dig_site[0][0] = "X"
-
-# for y in range(len(dig_site)):
-#     for x in range(len(dig_site[y])):
-#         visit_neighbors(x, y)
-# dig_site[0][len(dig_site[0])-1] = "X"
-# for y in range(len(dig_site)):
-#     for x in range(len(dig_site[y])):
-#         visit_neighbors(len(dig_site[y])-1-x, y)
-
-# for row in dig_site:
-#     print(row)
-#     area += len([char for char in row if char != "X"])
 visited_nodes = {"0,0": True}
 nodes_to_infect = [(0,0)]
 [dig_site[row].insert(0,".") for row in range(len(dig_site))]
@@ -118,7 +88,6 @@ while len(nodes_to_infect) > 0:
         visited_nodes[f"{left[0]},{left[1]}"] = True
 
 for row in dig_site:
-    print(row)
     area += len([char for char in row if char != "X"])
     
 # 55121 too low

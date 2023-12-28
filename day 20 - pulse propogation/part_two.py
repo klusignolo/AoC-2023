@@ -64,8 +64,6 @@ class Module:
             else:
                 LOW_COUNT += 1
             try:
-                #state_str = "HIGH" if next_pulse else "LOW"
-                #print(f"{self.name} -{state_str}-> {output}")
                 MODULES[output].receive_pulse(self.name, next_pulse)
             except KeyError:
                 if not next_pulse:
@@ -102,15 +100,26 @@ def press_button():
             except KeyError:
                 continue
 
+#target = MODULES["rx"]
+##for input in target.inputs:
+    # rx receives LOW if all inputs of zp are HIGH.
+    # all inputs of zp are high if ...
+    # start with rx, determine how to receive LOW/HIGH based on type of input(s)
+    # move to rx's inputs, determine how to receive LOW/HIGH based on THEIR input(s)
+    # do that until get to broadcaster.
+#
+## Brute force here
 try:
     button_count = 0
+    necessary_inputs = {i: 0 for i in MODULES["zp"].inputs}
     while True:
         button_count += 1
         press_button()
+        for i_name in MODULES["zp"].inputs:
+            inn = MODULES[i_name]
+            if inn.state:
+                necessary_inputs[i_name] = button_count
+                print(f"{i_name}: {button_count}")
 except:
     print(f"FOUND IT AFTER {button_count} PRESSES")
-# 2718854840 too high
-# 700596822 LOW
-# 151227080 Low
-# 744504136 744504136
 print(f"High: {HIGH_COUNT}, Low: {LOW_COUNT}. Product: {HIGH_COUNT * LOW_COUNT}")
